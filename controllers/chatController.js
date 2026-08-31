@@ -2,6 +2,7 @@ const asyncHandler = require('express-async-handler');
 const supabase = require('../utils/supabase');
 const VendorProfile = require('../models/VendorProfile');
 const User = require('../models/User');
+const Product = require('../models/Product');
 
 const EDIT_DELETE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
@@ -137,6 +138,18 @@ const getMyConversations = asyncHandler(async (req, res) => {
   const storeNameByUserId = {};
   vendorProfiles.forEach((v) => (storeNameByUserId[String(v.user)] = v.storeName));
 
+  // A conversation started from a product page carries that product's id —
+  // batch-fetch the (name, image, price) needed to show it pinned in the
+  // chat, same N+1-avoidance approach as the user/vendor lookups above.
+  const productIds = conversations.filter((c) => c.product_id).map((c) => c.product_id);
+  const products = productIds.length
+    ? await Product.find({ _id: { $in: productIds } }).select('name images price')
+    : [];
+  const productById = {};
+  products.forEach((p) => {
+    productById[String(p._id)] = { _id: p._id, name: p.name, image: p.images?.[0] || null, price: p.price };
+  });
+
   const enriched = conversations
     .map((c) => {
       let otherPartyName = 'Support';
@@ -155,6 +168,7 @@ const getMyConversations = asyncHandler(async (req, res) => {
         lastMessage: lastMessageByConvo[c.id]?.content || null,
         lastMessageAt: lastMessageByConvo[c.id]?.created_at || c.created_at,
         unreadCount: unreadByConvo[c.id] || 0,
+        product: c.product_id ? productById[c.product_id] || null : null,
       };
     })
     .sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
