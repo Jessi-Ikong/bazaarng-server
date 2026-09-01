@@ -4,6 +4,7 @@ const {
   registerCustomer,
   registerVendor,
   loginUser,
+  googleAuth,
   getMe,
   forgotPassword,
   resetPassword,
@@ -14,6 +15,7 @@ const { loginLimiter, registerLimiter, forgotPasswordLimiter } = require('../mid
 router.post('/register', registerLimiter, registerCustomer);
 router.post('/register-vendor', registerLimiter, registerVendor);
 router.post('/login', loginLimiter, loginUser);
+router.post('/google', loginLimiter, googleAuth);
 router.get('/me', protect, getMe);
 router.post('/forgot-password', forgotPasswordLimiter, forgotPassword);
 router.put('/reset-password/:token', resetPassword);

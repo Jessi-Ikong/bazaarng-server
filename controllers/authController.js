@@ -1,15 +1,26 @@
 const asyncHandler = require('express-async-handler');
 const crypto = require('crypto');
+const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const VendorProfile = require('../models/VendorProfile');
 const generateToken = require('../utils/generateToken');
 const { sendEmail, wrapEmail } = require('../utils/mailer');
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // @desc    Register a new customer
 // @route   POST /api/auth/register
 // @access  Public
 const registerCustomer = asyncHandler(async (req, res) => {
   const { name, email, password, phone } = req.body;
+
+  // password is no longer required at the schema level (Google-signed-in
+  // accounts don't have one) — normal registration still requires it, so
+  // that has to be validated here instead.
+  if (!password || password.length < 6) {
+    res.status(400);
+    throw new Error('Password must be at least 6 characters');
+  }
 
   const userExists = await User.findOne({ email });
   if (userExists) {
@@ -18,6 +29,14 @@ const registerCustomer = asyncHandler(async (req, res) => {
   }
 
   const user = await User.create({ name, email, password, phone, role: 'customer' });
+
+  await sendEmail({
+    to: user.email,
+    subject: 'Welcome to KoboBuy!',
+    html: wrapEmail(
+      `<p>Hi ${user.name},</p><p>Your KoboBuy account has been created. You can now browse products, negotiate prices, and start shopping.</p>`
+    ),
+  });
 
   res.status(201).json({
     _id: user._id,
@@ -33,6 +52,11 @@ const registerCustomer = asyncHandler(async (req, res) => {
 // @access  Public
 const registerVendor = asyncHandler(async (req, res) => {
   const { name, email, password, phone, storeName, storeDescription } = req.body;
+
+  if (!password || password.length < 6) {
+    res.status(400);
+    throw new Error('Password must be at least 6 characters');
+  }
 
   const userExists = await User.findOne({ email });
   if (userExists) {
@@ -52,6 +76,14 @@ const registerVendor = asyncHandler(async (req, res) => {
     storeName,
     storeDescription,
     status: 'pending', // admin must approve before this vendor can list products
+  });
+
+  await sendEmail({
+    to: user.email,
+    subject: 'Welcome to KoboBuy!',
+    html: wrapEmail(
+      `<p>Hi ${user.name},</p><p>Your KoboBuy vendor account for <strong>${storeName}</strong> has been created. Your store is pending admin approval — we'll let you know once it's live.</p>`
+    ),
   });
 
   res.status(201).json({
@@ -92,6 +124,14 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new Error(`Too many failed attempts on this account. Try again in ${minutesLeft} minute${minutesLeft > 1 ? 's' : ''}.`);
   }
 
+  // Google-only accounts have no password to compare against — reject
+  // clearly here rather than letting bcrypt.compare crash or silently
+  // mismatch on an undefined hash.
+  if (!user.password) {
+    res.status(400);
+    throw new Error('This account uses Google sign-in — use the Google button instead');
+  }
+
   const passwordMatches = await user.matchPassword(password);
 
   if (!passwordMatches) {
@@ -110,6 +150,71 @@ const loginUser = asyncHandler(async (req, res) => {
     user.failedLoginAttempts = 0;
     user.lockUntil = undefined;
     await user.save();
+  }
+
+  let vendorStatus;
+  if (user.role === 'vendor') {
+    const vendorProfile = await VendorProfile.findOne({ user: user._id });
+    vendorStatus = vendorProfile ? vendorProfile.status : undefined;
+  }
+
+  res.json({
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    ...(vendorStatus && { vendorStatus }),
+    token: generateToken(user._id, user.role),
+  });
+});
+
+// @desc    Sign in (or sign up) with a Google ID token
+// @route   POST /api/auth/google
+// @access  Public
+// Body: { credential } — the ID token from Google's frontend SDK.
+const googleAuth = asyncHandler(async (req, res) => {
+  const { credential } = req.body;
+  if (!credential) {
+    res.status(400);
+    throw new Error('Google credential is required');
+  }
+
+  let payload;
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    payload = ticket.getPayload();
+  } catch (error) {
+    res.status(401);
+    throw new Error('Invalid Google credential');
+  }
+
+  // Only the verified payload is ever trusted here — nothing else the
+  // frontend might send alongside the credential is used.
+  const { email, name, sub: googleId } = payload;
+  if (!email) {
+    res.status(400);
+    throw new Error('Google account has no email');
+  }
+
+  let user = await User.findOne({ email });
+
+  if (user) {
+    // Already has a password account with this email — link Google to it
+    // rather than creating a duplicate.
+    if (!user.googleId) {
+      user.googleId = googleId;
+      await user.save();
+    }
+  } else {
+    user = await User.create({
+      name: name || email.split('@')[0],
+      email,
+      googleId,
+      role: 'customer',
+    });
   }
 
   let vendorStatus;
@@ -200,4 +305,4 @@ const resetPassword = asyncHandler(async (req, res) => {
   res.json({ message: 'Password reset successfully. You can now log in.' });
 });
 
-module.exports = { registerCustomer, registerVendor, loginUser, getMe, forgotPassword, resetPassword };
+module.exports = { registerCustomer, registerVendor, loginUser, googleAuth, getMe, forgotPassword, resetPassword };

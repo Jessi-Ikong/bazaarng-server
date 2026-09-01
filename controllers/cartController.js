@@ -81,6 +81,17 @@ const addItemToCart = asyncHandler(async (req, res) => {
 
   let priceAtAdd = product.price;
 
+  // A variant-specific price applies when the buyer's exact selection
+  // matches a stored combination — but an accepted offer always wins
+  // regardless (checked next), since offer pricing must stay unaffected
+  // by this feature entirely.
+  if (product.variantPrices && product.variantPrices.length > 0) {
+    const matchedVariant = product.variantPrices.find((vp) => sameSelection(vp.combination, selectedOptions));
+    if (matchedVariant) {
+      priceAtAdd = matchedVariant.price;
+    }
+  }
+
   if (offerId) {
     const offer = await Offer.findById(offerId);
     if (!offer) {

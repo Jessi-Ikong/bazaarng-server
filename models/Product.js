@@ -16,6 +16,15 @@ const productSchema = new mongoose.Schema(
         values: [{ type: String, trim: true }],
       },
     ],
+    // Optional per-variant price overrides — e.g. { combination: { Size: 'L' },
+    // price: 65000 } charges 65000 for that exact combination instead of the
+    // base price. Stock is NOT tracked per-variant, only price.
+    variantPrices: [
+      {
+        combination: { type: Object, required: true },
+        price: { type: Number, required: true, min: 0 },
+      },
+    ],
     images: [{ type: String }],
     stock: { type: Number, required: true, default: 0, min: 0 },
     status: {

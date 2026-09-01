@@ -83,6 +83,7 @@ const checkout = asyncHandler(async (req, res) => {
       paymentMethod,
       paymentStatus: 'unpaid',
       paystackReference: paymentMethod === 'card' ? checkoutGroupId : undefined,
+      deliveryConfirmationCode: String(crypto.randomInt(100000, 1000000)),
     });
 
     if (paymentMethod === 'pay_on_delivery') {
@@ -118,11 +119,17 @@ const checkout = asyncHandler(async (req, res) => {
   // pay_on_delivery — the card path's confirmation email waits until
   // paymentController actually confirms the charge; this path is
   // unpaid-but-placed right away, so the buyer should hear about it now.
+  const deliveryCodesList = createdOrders
+    .map(
+      (o) =>
+        `<li>Order #${o._id.toString().slice(-6).toUpperCase()}: <strong>${o.deliveryConfirmationCode}</strong></li>`
+    )
+    .join('');
   await sendEmail({
     to: req.user.email,
     subject: 'Your KoboBuy order has been placed',
     html: wrapEmail(
-      `<p>Hi ${req.user.name},</p><p>Your order for ${formatNaira(grandTotal)} has been placed and will ship soon. You'll pay through KoboBuy once it's delivered.</p>`
+      `<p>Hi ${req.user.name},</p><p>Your order for ${formatNaira(grandTotal)} has been placed and will ship soon. You'll pay through KoboBuy once it's delivered.</p><p>Give this code to the vendor/courier when your order is delivered:</p><ul>${deliveryCodesList}</ul>`
     ),
   });
 
@@ -399,7 +406,7 @@ const getOrderReceipt = asyncHandler(async (req, res) => {
 // @route   PUT /api/orders/:id/status
 // @access  Private/Vendor
 const updateOrderStatus = asyncHandler(async (req, res) => {
-  const { status } = req.body;
+  const { status, deliveryCode } = req.body;
   const validStatuses = ['confirmed', 'shipped', 'delivered', 'cancelled'];
 
   if (!validStatuses.includes(status)) {
@@ -419,22 +426,46 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     throw new Error('Not authorized to update this order');
   }
 
+  // Proof of delivery: the vendor/courier must have the code the buyer was
+  // emailed at checkout/payment before this order can flip to 'delivered'.
+  // Every other transition is unaffected.
+  if (status === 'delivered') {
+    const submittedCode = String(deliveryCode || '').trim();
+    if (!submittedCode || submittedCode !== String(order.deliveryConfirmationCode || '').trim()) {
+      res.status(400);
+      throw new Error('Incorrect delivery code');
+    }
+    order.deliveredConfirmedAt = new Date();
+  }
+
   order.status = status;
   const updated = await order.save();
 
   const buyer = await User.findById(order.buyer);
   if (buyer) {
-    const statusMessages = {
-      confirmed: 'Your order has been confirmed by the vendor.',
-      shipped: 'Your order is on its way!',
-      delivered: 'Your order has been delivered.',
-      cancelled: 'Your order was cancelled by the vendor.',
-    };
-    await sendEmail({
-      to: buyer.email,
-      subject: `Order update: ${status}`,
-      html: wrapEmail(`<p>Hi ${buyer.name},</p><p>${statusMessages[status]}</p>`),
-    });
+    if (status === 'delivered') {
+      const itemLinks = order.items
+        .map((i) => `<li><a href="${process.env.CLIENT_URL}/products/${i.product}">${i.name}</a></li>`)
+        .join('');
+      await sendEmail({
+        to: buyer.email,
+        subject: 'Delivery confirmed — how was it?',
+        html: wrapEmail(
+          `<p>Hi ${buyer.name},</p><p>Your order has been marked as delivered. We'd love to hear what you think!</p><p>Leave a review:</p><ul>${itemLinks}</ul>`
+        ),
+      });
+    } else {
+      const statusMessages = {
+        confirmed: 'Your order has been confirmed by the vendor.',
+        shipped: 'Your order is on its way!',
+        cancelled: 'Your order was cancelled by the vendor.',
+      };
+      await sendEmail({
+        to: buyer.email,
+        subject: `Order update: ${status}`,
+        html: wrapEmail(`<p>Hi ${buyer.name},</p><p>${statusMessages[status]}</p>`),
+      });
+    }
   }
 
   res.json(updated);

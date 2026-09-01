@@ -41,6 +41,10 @@ const orderSchema = new mongoose.Schema(
     },
     paystackReference: { type: String },
     paidAt: { type: Date },
+    // 6-digit code the buyer gives to the vendor/courier at delivery —
+    // proof the order actually reached them before it can be marked delivered.
+    deliveryConfirmationCode: { type: String },
+    deliveredConfirmedAt: { type: Date },
     shippingAddress: {
       street: String,
       city: String,

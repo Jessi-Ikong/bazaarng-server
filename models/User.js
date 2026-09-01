@@ -5,7 +5,13 @@ const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    password: { type: String, required: true, minlength: 6 },
+    // Not required at the schema level — Google-signed-in accounts have no
+    // password. Normal registration still requires one; that's validated in
+    // registerCustomer/registerVendor themselves, not here.
+    password: { type: String, minlength: 6 },
+    // Set when this account was created via (or later linked to) Google
+    // Sign-In. Optional — most accounts won't have one.
+    googleId: { type: String, unique: true, sparse: true },
     phone: { type: String, trim: true },
     role: {
       type: String,

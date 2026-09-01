@@ -46,6 +46,31 @@ function validateOptions(options) {
   });
 }
 
+// Validates the shape of vendor-supplied variant price overrides — each
+// needs an object combination and a positive price. Optional entirely.
+function validateVariantPrices(variantPrices) {
+  if (!variantPrices) return [];
+  if (!Array.isArray(variantPrices)) {
+    const err = new Error('variantPrices must be an array');
+    err.statusCode = 400;
+    throw err;
+  }
+  return variantPrices.map((vp) => {
+    const price = Number(vp.price);
+    if (!vp.combination || typeof vp.combination !== 'object' || Object.keys(vp.combination).length === 0) {
+      const err = new Error('Each variant price needs a combination of option values');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (!price || price <= 0) {
+      const err = new Error('Each variant price must be greater than 0');
+      err.statusCode = 400;
+      throw err;
+    }
+    return { combination: vp.combination, price };
+  });
+}
+
 // @desc    Create a product (approved vendors only)
 // @route   POST /api/products
 // @access  Private/Vendor
@@ -55,16 +80,17 @@ const createProduct = asyncHandler(async (req, res) => {
     throw err;
   });
 
-  const { name, description, price, category, images, stock, offersEnabled, options } = req.body;
+  const { name, description, price, category, images, stock, offersEnabled, options, variantPrices } = req.body;
 
   if (!name || !description || price === undefined || !category) {
     res.status(400);
     throw new Error('name, description, price, and category are required');
   }
 
-  let validatedOptions;
+  let validatedOptions, validatedVariantPrices;
   try {
     validatedOptions = validateOptions(options);
+    validatedVariantPrices = validateVariantPrices(variantPrices);
   } catch (err) {
     res.status(err.statusCode || 400);
     throw err;
@@ -80,6 +106,7 @@ const createProduct = asyncHandler(async (req, res) => {
     stock: stock || 0,
     offersEnabled: offersEnabled !== undefined ? offersEnabled : true,
     options: validatedOptions,
+    variantPrices: validatedVariantPrices,
   });
 
   res.status(201).json(product);
@@ -173,6 +200,15 @@ const updateProduct = asyncHandler(async (req, res) => {
   if (req.body.options !== undefined) {
     try {
       product.options = validateOptions(req.body.options);
+    } catch (err) {
+      res.status(err.statusCode || 400);
+      throw err;
+    }
+  }
+
+  if (req.body.variantPrices !== undefined) {
+    try {
+      product.variantPrices = validateVariantPrices(req.body.variantPrices);
     } catch (err) {
       res.status(err.statusCode || 400);
       throw err;

@@ -54,7 +54,7 @@ async function finalizeOrdersForReference(reference) {
         to: buyer.email,
         subject: 'Payment received — KoboBuy order confirmed',
         html: wrapEmail(
-          `<p>Hi ${buyer.name},</p><p>We've received payment of ${formatNaira(order.totalAmount)} for your order. It's now confirmed.</p>`
+          `<p>Hi ${buyer.name},</p><p>We've received payment of ${formatNaira(order.totalAmount)} for your order. It's now confirmed.</p><p>Give this code to the vendor/courier when your order is delivered: <strong>${order.deliveryConfirmationCode}</strong></p>`
         ),
       });
     }
