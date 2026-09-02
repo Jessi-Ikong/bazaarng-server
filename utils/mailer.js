@@ -12,7 +12,7 @@ async function sendEmail({ to, subject, html }) {
   }
   try {
     await resend.emails.send({
-      from: process.env.EMAIL_FROM || 'KoboBuy <onboarding@resend.dev>',
+      from: process.env.EMAIL_FROM || 'BazaarNG <onboarding@resend.dev>',
       to,
       subject,
       html,
@@ -30,13 +30,13 @@ function wrapEmail(bodyHtml) {
   return `
     <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
       <div style="background: #04342C; padding: 20px; text-align: center;">
-        <span style="color: #ffffff; font-size: 18px; font-weight: 600;">Kobo<span style="color: #FAC775;">Buy</span></span>
+        <span style="color: #ffffff; font-size: 18px; font-weight: 600;">Bazaar<span style="color: #FAC775;">NG</span></span>
       </div>
       <div style="padding: 24px; color: #1A1A1A; font-size: 14px; line-height: 1.6;">
         ${bodyHtml}
       </div>
       <div style="padding: 16px 24px; color: #8B8A84; font-size: 12px;">
-        KoboBuy — buy smart, sell easy, negotiate freely.
+        BazaarNG — buy smart, sell easy, negotiate freely.
       </div>
     </div>
   `;

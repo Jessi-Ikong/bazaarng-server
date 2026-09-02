@@ -70,11 +70,11 @@ app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/promo-slides", promoSlideRoutes);
 
-app.get("/", (req, res) => res.send("KoboBuy API is running"));
+app.get("/", (req, res) => res.send("BazaarNG API is running"));
 app.get("/sitemap.xml", getSitemap);
 
 app.use(notFound);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`KoboBuy server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`BazaarNG server running on port ${PORT}`));

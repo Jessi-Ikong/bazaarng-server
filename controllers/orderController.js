@@ -127,9 +127,9 @@ const checkout = asyncHandler(async (req, res) => {
     .join('');
   await sendEmail({
     to: req.user.email,
-    subject: 'Your KoboBuy order has been placed',
+    subject: 'Your BazaarNG order has been placed',
     html: wrapEmail(
-      `<p>Hi ${req.user.name},</p><p>Your order for ${formatNaira(grandTotal)} has been placed and will ship soon. You'll pay through KoboBuy once it's delivered.</p><p>Give this code to the vendor/courier when your order is delivered:</p><ul>${deliveryCodesList}</ul>`
+      `<p>Hi ${req.user.name},</p><p>Your order for ${formatNaira(grandTotal)} has been placed and will ship soon. You'll pay through BazaarNG once it's delivered.</p><p>Give this code to the vendor/courier when your order is delivered:</p><ul>${deliveryCodesList}</ul>`
     ),
   });
 
@@ -141,7 +141,7 @@ const checkout = asyncHandler(async (req, res) => {
     if (vendorProfile?.user) {
       await sendEmail({
         to: vendorProfile.user.email,
-        subject: 'New order on KoboBuy',
+        subject: 'New order on BazaarNG',
         html: wrapEmail(
           `<p>Hi ${vendorProfile.user.name},</p><p>You have a new order for ${formatNaira(order.totalAmount)} (${order.items.length} item${order.items.length > 1 ? 's' : ''}) — payment will be collected on delivery. Check your Orders dashboard for details.</p>`
         ),
@@ -343,12 +343,12 @@ const getOrderReceipt = asyncHandler(async (req, res) => {
   }
 
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename=kobobuy-receipt-${order._id.toString().slice(-8)}.pdf`);
+  res.setHeader('Content-Disposition', `attachment; filename=bazaarng-receipt-${order._id.toString().slice(-8)}.pdf`);
 
   const doc = new PDFDocument({ margin: 50 });
   doc.pipe(res);
 
-  doc.fontSize(20).fillColor('#04342C').text('KoboBuy', { continued: true }).fillColor('#1D9E75').text('');
+  doc.fontSize(20).fillColor('#04342C').text('BazaarNG', { continued: true }).fillColor('#1D9E75').text('');
   doc.moveDown(0.3);
   doc.fontSize(14).fillColor('#1A1A1A').text('Order Receipt');
   doc.fontSize(9).fillColor('#6B6B66').text(`Order #${order._id.toString().slice(-8).toUpperCase()}`);

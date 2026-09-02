@@ -98,7 +98,7 @@ const updateVendorStatus = asyncHandler(async (req, res) => {
   const updated = await profile.save();
 
   if (profile.user) {
-    const subject = status === 'approved' ? 'Your KoboBuy store is approved!' : 'Your KoboBuy vendor application';
+    const subject = status === 'approved' ? 'Your BazaarNG store is approved!' : 'Your BazaarNG vendor application';
     const message =
       status === 'approved'
         ? `Great news — <strong>${profile.storeName}</strong> has been approved. You can now start listing products.`

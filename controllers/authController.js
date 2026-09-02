@@ -32,9 +32,9 @@ const registerCustomer = asyncHandler(async (req, res) => {
 
   await sendEmail({
     to: user.email,
-    subject: 'Welcome to KoboBuy!',
+    subject: 'Welcome to BazaarNG!',
     html: wrapEmail(
-      `<p>Hi ${user.name},</p><p>Your KoboBuy account has been created. You can now browse products, negotiate prices, and start shopping.</p>`
+      `<p>Hi ${user.name},</p><p>Your BazaarNG account has been created. You can now browse products, negotiate prices, and start shopping.</p>`
     ),
   });
 
@@ -80,9 +80,9 @@ const registerVendor = asyncHandler(async (req, res) => {
 
   await sendEmail({
     to: user.email,
-    subject: 'Welcome to KoboBuy!',
+    subject: 'Welcome to BazaarNG!',
     html: wrapEmail(
-      `<p>Hi ${user.name},</p><p>Your KoboBuy vendor account for <strong>${storeName}</strong> has been created. Your store is pending admin approval — we'll let you know once it's live.</p>`
+      `<p>Hi ${user.name},</p><p>Your BazaarNG vendor account for <strong>${storeName}</strong> has been created. Your store is pending admin approval — we'll let you know once it's live.</p>`
     ),
   });
 
@@ -264,10 +264,10 @@ const forgotPassword = asyncHandler(async (req, res) => {
   const resetUrl = `${process.env.CLIENT_URL}/reset-password/${rawToken}`;
   await sendEmail({
     to: user.email,
-    subject: 'Reset your KoboBuy password',
+    subject: 'Reset your BazaarNG password',
     html: wrapEmail(`
       <p>Hi ${user.name},</p>
-      <p>We received a request to reset your KoboBuy password. This link is valid for 1 hour:</p>
+      <p>We received a request to reset your BazaarNG password. This link is valid for 1 hour:</p>
       <p><a href="${resetUrl}" style="color:#0F6E56;">Reset your password</a></p>
       <p>If you didn't request this, you can safely ignore this email.</p>
     `),

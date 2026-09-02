@@ -252,7 +252,7 @@ const uploadProductImage = asyncHandler(async (req, res) => {
   // touches local disk, so this survives redeploys on any host.
   const uploadResult = await new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      { folder: 'kobobuy/products' },
+      { folder: 'bazaarng/products' },
       (error, result) => (error ? reject(error) : resolve(result))
     );
     stream.end(req.file.buffer);

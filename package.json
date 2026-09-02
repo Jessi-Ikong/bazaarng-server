@@ -1,7 +1,7 @@
 {
-  "name": "kobobuy-server",
+  "name": "bazaarng-server",
   "version": "1.0.0",
-  "description": "Backend API for KoboBuy - multi-vendor marketplace with negotiable pricing",
+  "description": "Backend API for BazaarNG - multi-vendor marketplace with negotiable pricing",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

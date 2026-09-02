@@ -157,7 +157,7 @@ const getMyConversations = asyncHandler(async (req, res) => {
         const otherId = String(c.participant_a_id) === String(req.user._id) ? c.participant_b_id : c.participant_a_id;
         otherPartyName = storeNameByUserId[otherId] || userNameById[otherId] || 'Unknown';
       } else if (req.user.role !== 'admin') {
-        otherPartyName = 'KoboBuy Support';
+        otherPartyName = 'BazaarNG Support';
       } else {
         otherPartyName = userNameById[c.participant_a_id] || 'User';
       }

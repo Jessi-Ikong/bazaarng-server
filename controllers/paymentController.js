@@ -52,7 +52,7 @@ async function finalizeOrdersForReference(reference) {
     if (buyer) {
       await sendEmail({
         to: buyer.email,
-        subject: 'Payment received — KoboBuy order confirmed',
+        subject: 'Payment received — BazaarNG order confirmed',
         html: wrapEmail(
           `<p>Hi ${buyer.name},</p><p>We've received payment of ${formatNaira(order.totalAmount)} for your order. It's now confirmed.</p><p>Give this code to the vendor/courier when your order is delivered: <strong>${order.deliveryConfirmationCode}</strong></p>`
         ),
@@ -66,7 +66,7 @@ async function finalizeOrdersForReference(reference) {
     if (vendorProfile?.user) {
       await sendEmail({
         to: vendorProfile.user.email,
-        subject: 'New paid order on KoboBuy',
+        subject: 'New paid order on BazaarNG',
         html: wrapEmail(
           `<p>Hi ${vendorProfile.user.name},</p><p>You have a new paid order for ${formatNaira(order.totalAmount)} (${order.items.length} item${order.items.length > 1 ? 's' : ''}). Check your Orders dashboard for details.</p>`
         ),
