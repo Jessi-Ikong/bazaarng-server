@@ -18,6 +18,7 @@ const earningsRoutes = require("./routes/earningsRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const wishlistRoutes = require("./routes/wishlistRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+const promoSlideRoutes = require("./routes/promoSlideRoutes");
 const { getSitemap } = require("./controllers/sitemapController");
 
 connectDB();
@@ -67,6 +68,7 @@ app.use("/api/earnings", earningsRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/promo-slides", promoSlideRoutes);
 
 app.get("/", (req, res) => res.send("KoboBuy API is running"));
 app.get("/sitemap.xml", getSitemap);
