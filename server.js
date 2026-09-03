@@ -33,10 +33,16 @@ const app = express();
 const allowedOrigins = [process.env.CLIENT_URL, "http://localhost:5173"].filter(
   Boolean,
 );
+// "https://www.example.com" and "https://example.com" are the same site,
+// but an exact string match treats them as different origins — strip a
+// leading "www." (only at the start, not anywhere else in the string)
+// from both sides before comparing so either form of CLIENT_URL works.
+const stripLeadingWww = (url) => url.replace(/^https:\/\/www\./, "https://");
+const normalizedAllowedOrigins = allowedOrigins.map(stripLeadingWww);
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || normalizedAllowedOrigins.includes(stripLeadingWww(origin))) {
         callback(null, true);
       } else {
         callback(new Error("Not allowed by CORS"));
