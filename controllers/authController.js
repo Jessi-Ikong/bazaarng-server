@@ -258,7 +258,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
 
   const rawToken = crypto.randomBytes(32).toString('hex');
   user.resetPasswordToken = crypto.createHash('sha256').update(rawToken).digest('hex');
-  user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+  user.resetPasswordExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
   await user.save();
 
   const resetUrl = `${process.env.CLIENT_URL}/reset-password/${rawToken}`;
@@ -267,7 +267,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
     subject: 'Reset your BazaarNG password',
     html: wrapEmail(`
       <p>Hi ${user.name},</p>
-      <p>We received a request to reset your BazaarNG password. This link is valid for 1 hour:</p>
+      <p>We received a request to reset your BazaarNG password. This link is valid for 10 minutes:</p>
       <p><a href="${resetUrl}" style="color:#0F6E56;">Reset your password</a></p>
       <p>If you didn't request this, you can safely ignore this email.</p>
     `),

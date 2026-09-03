@@ -119,17 +119,13 @@ const checkout = asyncHandler(async (req, res) => {
   // pay_on_delivery — the card path's confirmation email waits until
   // paymentController actually confirms the charge; this path is
   // unpaid-but-placed right away, so the buyer should hear about it now.
-  const deliveryCodesList = createdOrders
-    .map(
-      (o) =>
-        `<li>Order #${o._id.toString().slice(-6).toUpperCase()}: <strong>${o.deliveryConfirmationCode}</strong></li>`
-    )
-    .join('');
+  // The delivery confirmation code itself is revealed later, in the
+  // 'shipped' status-update email — not here.
   await sendEmail({
     to: req.user.email,
     subject: 'Your BazaarNG order has been placed',
     html: wrapEmail(
-      `<p>Hi ${req.user.name},</p><p>Your order for ${formatNaira(grandTotal)} has been placed and will ship soon. You'll pay through BazaarNG once it's delivered.</p><p>Give this code to the vendor/courier when your order is delivered:</p><ul>${deliveryCodesList}</ul>`
+      `<p>Hi ${req.user.name},</p><p>Your order for ${formatNaira(grandTotal)} has been placed and will ship soon. You'll pay through BazaarNG once it's delivered.</p>`
     ),
   });
 
@@ -457,7 +453,7 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     } else {
       const statusMessages = {
         confirmed: 'Your order has been confirmed by the vendor.',
-        shipped: 'Your order is on its way!',
+        shipped: `Your order is on its way! Give this code to the vendor/courier when it's delivered: ${order.deliveryConfirmationCode}`,
         cancelled: 'Your order was cancelled by the vendor.',
       };
       await sendEmail({
