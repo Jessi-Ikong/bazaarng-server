@@ -9,6 +9,34 @@ function formatNaira(amount) {
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(amount);
 }
 
+// Same pattern as cartController.js's addItemToCart — confirms
+// selectedOptions actually satisfies the product's required option groups.
+function validateSelectedOptions(product, selectedOptions = {}) {
+  if (!product.options || product.options.length === 0) return;
+
+  const missing = product.options
+    .filter((group) => {
+      const chosen = selectedOptions[group.name];
+      return !chosen || !group.values.includes(chosen);
+    })
+    .map((group) => group.name);
+
+  if (missing.length > 0) {
+    const err = new Error(`Please select: ${missing.join(', ')}`);
+    err.statusCode = 400;
+    throw err;
+  }
+}
+
+// Same matching rule cartController.js uses against variantPrices — every
+// selected key/value must match exactly.
+function sameSelection(a = {}, b = {}) {
+  const aKeys = Object.keys(a).sort();
+  const bKeys = Object.keys(b).sort();
+  if (aKeys.length !== bKeys.length) return false;
+  return aKeys.every((key) => a[key] === b[key]) && aKeys.every((key, i) => key === bKeys[i]);
+}
+
 const OFFER_VALIDITY_HOURS = 6;
 
 // Lazily flips any accepted offer past its expiry into 'expired'. Called
@@ -32,7 +60,7 @@ async function expireStaleOffers(offers) {
 // @route   POST /api/offers
 // @access  Private (customer)
 const createOffer = asyncHandler(async (req, res) => {
-  const { productId, proposedPrice } = req.body;
+  const { productId, proposedPrice, selectedOptions = {} } = req.body;
 
   if (!proposedPrice || proposedPrice <= 0) {
     res.status(400);
@@ -49,11 +77,37 @@ const createOffer = asyncHandler(async (req, res) => {
     throw new Error('This vendor does not accept offers on this product');
   }
 
+  try {
+    validateSelectedOptions(product, selectedOptions);
+  } catch (err) {
+    res.status(err.statusCode || 400);
+    throw err;
+  }
+
+  // The ceiling an offer must stay below is whichever price actually
+  // applies to THIS exact variant — its own override if one is set,
+  // otherwise the base listed price. Validating against the base price
+  // alone would let a buyer negotiate against a cheap variant and then
+  // apply that discount to a pricier one at checkout.
+  let listedPrice = product.price;
+  if (product.variantPrices && product.variantPrices.length > 0) {
+    const matchedVariant = product.variantPrices.find((vp) => sameSelection(vp.combination, selectedOptions));
+    if (matchedVariant) {
+      listedPrice = matchedVariant.price;
+    }
+  }
+
+  if (proposedPrice >= listedPrice) {
+    res.status(400);
+    throw new Error(`Your offer should be below the listed price of ${formatNaira(listedPrice)}.`);
+  }
+
   const offer = await Offer.create({
     product: productId,
     buyer: req.user._id,
     vendor: product.vendor,
     proposedPrice,
+    selectedOptions,
     status: 'pending',
   });
 

@@ -7,6 +7,11 @@ const offerSchema = new mongoose.Schema(
     vendor: { type: mongoose.Schema.Types.ObjectId, ref: 'VendorProfile', required: true },
     proposedPrice: { type: Number, required: true, min: 0 },
     counterPrice: { type: Number, min: 0 },
+    // Which exact variant this offer was negotiated for — e.g. { Storage: '256GB' }.
+    // Set once at creation and carried through unchanged; addItemToCart uses
+    // this (not whatever the cart request sends) so an accepted price can
+    // never be applied to a different, possibly pricier, variant.
+    selectedOptions: { type: Object, default: {} },
     status: {
       type: String,
       enum: ['pending', 'accepted', 'rejected', 'countered', 'expired'],

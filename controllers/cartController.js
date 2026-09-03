@@ -56,7 +56,8 @@ const getCart = asyncHandler(async (req, res) => {
 // @access  Private
 // Body: { productId, quantity, selectedOptions?, offerId? }
 const addItemToCart = asyncHandler(async (req, res) => {
-  const { productId, quantity = 1, selectedOptions = {}, offerId } = req.body;
+  const { productId, quantity = 1, offerId } = req.body;
+  let selectedOptions = req.body.selectedOptions || {};
 
   const product = await Product.findById(productId);
   if (!product) {
@@ -72,28 +73,9 @@ const addItemToCart = asyncHandler(async (req, res) => {
     throw new Error('Not enough stock available');
   }
 
-  try {
-    validateSelectedOptions(product, selectedOptions);
-  } catch (err) {
-    res.status(err.statusCode || 400);
-    throw err;
-  }
-
-  let priceAtAdd = product.price;
-
-  // A variant-specific price applies when the buyer's exact selection
-  // matches a stored combination — but an accepted offer always wins
-  // regardless (checked next), since offer pricing must stay unaffected
-  // by this feature entirely.
-  if (product.variantPrices && product.variantPrices.length > 0) {
-    const matchedVariant = product.variantPrices.find((vp) => sameSelection(vp.combination, selectedOptions));
-    if (matchedVariant) {
-      priceAtAdd = matchedVariant.price;
-    }
-  }
-
+  let offer;
   if (offerId) {
-    const offer = await Offer.findById(offerId);
+    offer = await Offer.findById(offerId);
     if (!offer) {
       res.status(404);
       throw new Error('Offer not found');
@@ -116,6 +98,34 @@ const addItemToCart = asyncHandler(async (req, res) => {
       res.status(400);
       throw new Error('This offer has expired');
     }
+    // The offer was negotiated for a specific variant — always use THAT
+    // exact selection, regardless of whatever selectedOptions this request
+    // sends. Otherwise an accepted price could be applied to a different
+    // (possibly pricier) variant than the one actually agreed on.
+    selectedOptions = offer.selectedOptions || {};
+  }
+
+  try {
+    validateSelectedOptions(product, selectedOptions);
+  } catch (err) {
+    res.status(err.statusCode || 400);
+    throw err;
+  }
+
+  let priceAtAdd = product.price;
+
+  // A variant-specific price applies when the buyer's exact selection
+  // matches a stored combination — but an accepted offer always wins
+  // regardless (checked next), since offer pricing must stay unaffected
+  // by this feature entirely.
+  if (product.variantPrices && product.variantPrices.length > 0) {
+    const matchedVariant = product.variantPrices.find((vp) => sameSelection(vp.combination, selectedOptions));
+    if (matchedVariant) {
+      priceAtAdd = matchedVariant.price;
+    }
+  }
+
+  if (offer) {
     priceAtAdd = offer.proposedPrice;
   }
 
