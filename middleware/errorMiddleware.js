@@ -1,9 +1,12 @@
+const Sentry = require('@sentry/node');
+
 const notFound = (req, res, next) => {
   res.status(404);
   next(new Error(`Route not found - ${req.originalUrl}`));
 };
 
 const errorHandler = (err, req, res, next) => {
+  Sentry.captureException(err);
   const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
   res.status(statusCode).json({
     message: err.message,

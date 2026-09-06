@@ -1,4 +1,8 @@
 require("dotenv").config();
+const Sentry = require("@sentry/node");
+if (process.env.SENTRY_DSN) {
+  Sentry.init({ dsn: process.env.SENTRY_DSN });
+}
 const express = require("express");
 const path = require("path");
 const cors = require("cors");
