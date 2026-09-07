@@ -49,6 +49,14 @@ const updateMyVendorProfile = asyncHandler(async (req, res) => {
 
   profile.storeName = req.body.storeName || profile.storeName;
   profile.storeDescription = req.body.storeDescription || profile.storeDescription;
+  profile.city = req.body.city || profile.city;
+  profile.state = req.body.state || profile.state;
+  // Explicit undefined-checks here (not `||`) since 0 is a valid, meaningful
+  // fee — a vendor choosing free delivery must be able to save that as 0.
+  if (req.body.deliveryFeeSameCity !== undefined) profile.deliveryFeeSameCity = req.body.deliveryFeeSameCity;
+  if (req.body.deliveryFeeSameState !== undefined) profile.deliveryFeeSameState = req.body.deliveryFeeSameState;
+  if (req.body.deliveryFeeDifferentState !== undefined)
+    profile.deliveryFeeDifferentState = req.body.deliveryFeeDifferentState;
   if (req.body.bankDetails) {
     profile.bankDetails = { ...profile.bankDetails, ...req.body.bankDetails };
   }

@@ -8,6 +8,7 @@ const VendorProfile = require('../models/VendorProfile');
 const User = require('../models/User');
 const { initializeTransaction } = require('../utils/paystack');
 const { sendEmail, wrapEmail } = require('../utils/mailer');
+const { calculateDeliveryFee } = require('../utils/deliveryFee');
 
 function formatNaira(amount) {
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(amount);
@@ -68,8 +69,13 @@ const checkout = asyncHandler(async (req, res) => {
   const createdOrders = [];
   let grandTotal = 0;
 
+  const vendorProfiles = await VendorProfile.find({ _id: { $in: Object.keys(itemsByVendor) } });
+  const vendorProfileById = new Map(vendorProfiles.map((v) => [String(v._id), v]));
+
   for (const [vendorId, items] of Object.entries(itemsByVendor)) {
-    const totalAmount = items.reduce((sum, i) => sum + i.priceAtPurchase * i.quantity, 0);
+    const itemsTotal = items.reduce((sum, i) => sum + i.priceAtPurchase * i.quantity, 0);
+    const deliveryFee = calculateDeliveryFee(vendorProfileById.get(vendorId), shippingAddress);
+    const totalAmount = itemsTotal + deliveryFee;
     grandTotal += totalAmount;
 
     const order = await Order.create({
@@ -78,6 +84,7 @@ const checkout = asyncHandler(async (req, res) => {
       checkoutGroupId,
       items,
       totalAmount,
+      deliveryFee,
       shippingAddress,
       status: 'placed',
       paymentMethod,
@@ -372,6 +379,8 @@ const getOrderReceipt = asyncHandler(async (req, res) => {
   doc.strokeColor('#E8E7E1').moveTo(50, doc.y).lineTo(545, doc.y).stroke();
   doc.moveDown();
 
+  doc.fontSize(10).fillColor('#6B6B66').text(`Delivery fee: ${formatNaira(order.deliveryFee || 0)}`, { align: 'right' });
+  doc.moveDown(0.3);
   doc.fontSize(12).fillColor('#04342C').text(`Total: ${formatNaira(order.totalAmount)}`, { align: 'right' });
   doc.moveDown();
 

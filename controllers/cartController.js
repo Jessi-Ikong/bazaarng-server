@@ -2,6 +2,7 @@ const asyncHandler = require('express-async-handler');
 const Cart = require('../models/Cart');
 const Product = require('../models/Product');
 const Offer = require('../models/Offer');
+const { calculateDeliveryFee } = require('../utils/deliveryFee');
 
 const CART_POPULATE = {
   path: 'items.product',
@@ -209,4 +210,39 @@ const clearCart = asyncHandler(async (req, res) => {
   res.json({ message: 'Cart cleared' });
 });
 
-module.exports = { getCart, addItemToCart, updateCartItem, removeCartItem, clearCart };
+// @desc    Preview the delivery fee each vendor in the cart would charge for
+//          a given shipping city/state — uses the same helper checkout uses,
+//          so this preview can never drift from what's actually charged.
+// @route   GET /api/cart/delivery-preview?city=&state=
+// @access  Private
+const getDeliveryFeePreview = asyncHandler(async (req, res) => {
+  const { city = '', state = '' } = req.query;
+
+  const cart = await Cart.findOne({ buyer: req.user._id }).populate({
+    path: 'items.product',
+    select: 'vendor',
+    populate: {
+      path: 'vendor',
+      select: 'storeName city state deliveryFeeSameCity deliveryFeeSameState deliveryFeeDifferentState',
+    },
+  });
+
+  if (!cart || cart.items.length === 0) {
+    return res.json([]);
+  }
+
+  const vendorsSeen = new Map();
+  for (const item of cart.items) {
+    const vendor = item.product?.vendor;
+    if (!vendor || vendorsSeen.has(String(vendor._id))) continue;
+    vendorsSeen.set(String(vendor._id), {
+      vendorId: vendor._id,
+      storeName: vendor.storeName,
+      deliveryFee: calculateDeliveryFee(vendor, { city, state }),
+    });
+  }
+
+  res.json(Array.from(vendorsSeen.values()));
+});
+
+module.exports = { getCart, addItemToCart, updateCartItem, removeCartItem, clearCart, getDeliveryFeePreview };

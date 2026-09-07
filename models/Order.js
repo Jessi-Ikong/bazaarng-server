@@ -21,6 +21,9 @@ const orderSchema = new mongoose.Schema(
     checkoutGroupId: { type: String, required: true },
     items: [orderItemSchema],
     totalAmount: { type: Number, required: true },
+    // Snapshot of the vendor's delivery fee tier that applied to this order,
+    // already included in totalAmount above.
+    deliveryFee: { type: Number, default: 0 },
     status: {
       type: String,
       enum: ['placed', 'confirmed', 'shipped', 'delivered', 'cancelled'],
