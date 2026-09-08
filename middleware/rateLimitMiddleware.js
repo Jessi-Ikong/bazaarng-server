@@ -35,4 +35,43 @@ const forgotPasswordLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-module.exports = { loginLimiter, registerLimiter, forgotPasswordLimiter };
+// Checkout is a payment endpoint — the strictest limiter here, guarding
+// against card-testing fraud (scripted, repeated small checkout attempts
+// used to validate stolen card numbers).
+const checkoutLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: 'Too many checkout attempts. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Offers are a normal part of browsing/negotiating, so this is looser than
+// checkout — just enough to stop a scripted flood of spam offers at a vendor.
+const offerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { message: 'Too many offers submitted. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Reviews are already gated at the database level (real paid+delivered
+// order required, one review per product per buyer) — this is mostly
+// about avoiding wasted server load from repeated invalid attempts.
+const reviewLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: 'Too many review submissions. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+module.exports = {
+  loginLimiter,
+  registerLimiter,
+  forgotPasswordLimiter,
+  checkoutLimiter,
+  offerLimiter,
+  reviewLimiter,
+};

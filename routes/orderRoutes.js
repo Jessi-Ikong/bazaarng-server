@@ -13,9 +13,10 @@ const {
 } = require('../controllers/orderController');
 const { protect } = require('../middleware/authMiddleware');
 const { authorize } = require('../middleware/roleMiddleware');
+const { checkoutLimiter } = require('../middleware/rateLimitMiddleware');
 
 // IMPORTANT: /mine, /vendor, and /admin/all must come before /:id, same reasoning as productRoutes
-router.post('/checkout', protect, authorize('customer'), checkout);
+router.post('/checkout', protect, authorize('customer'), checkoutLimiter, checkout);
 router.get('/mine', protect, authorize('customer'), getMyOrders);
 router.get('/vendor', protect, authorize('vendor'), getVendorOrders);
 router.get('/admin/all', protect, authorize('admin'), getAllOrdersAdmin);
