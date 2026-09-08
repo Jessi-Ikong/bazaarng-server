@@ -84,6 +84,25 @@ const createOffer = asyncHandler(async (req, res) => {
     throw err;
   }
 
+  // A buyer can't stack a second offer on the exact same product+variant
+  // while an earlier one is still unresolved — pending (awaiting the
+  // vendor), countered (awaiting the buyer's response), or accepted
+  // (awaiting the buyer adding it to cart). Rejected/expired offers are
+  // terminal, so a fresh offer is always allowed after either of those.
+  // Scoped to product+selectedOptions, not the whole product, so separate
+  // variants can still each carry their own active offer.
+  const existingOffers = await Offer.find({
+    buyer: req.user._id,
+    product: productId,
+    status: { $in: ['pending', 'countered', 'accepted'] },
+  });
+  if (existingOffers.some((o) => sameSelection(o.selectedOptions, selectedOptions))) {
+    res.status(400);
+    throw new Error(
+      'You already have an active offer on this product — please wait for a response, or check My Offers to act on your existing one, before submitting another.'
+    );
+  }
+
   // The ceiling an offer must stay below is whichever price actually
   // applies to THIS exact variant — its own override if one is set,
   // otherwise the base listed price. Validating against the base price
