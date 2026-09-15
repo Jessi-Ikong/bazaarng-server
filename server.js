@@ -3,6 +3,24 @@ const Sentry = require("@sentry/node");
 if (process.env.SENTRY_DSN) {
   Sentry.init({ dsn: process.env.SENTRY_DSN });
 }
+
+// Last-resort safety nets: without these, an uncaught exception or an
+// unhandled promise rejection crashes Node immediately and silently — all
+// Render shows is "Exited with status 1", no indication of why. This logs
+// the full error and reports it to Sentry BEFORE exiting, so a crash
+// restart is still visible and diagnosable instead of an unexplained
+// crash-loop. For a genuinely unrecoverable error, the process is in an
+// undefined state past this point, so it's still correct to exit
+// afterward — Sentry.close() just makes sure the report actually reaches
+// Sentry first.
+function crashSafely(label, err) {
+  console.error(`[${new Date().toISOString()}] ${label}:`, err);
+  Sentry.captureException(err);
+  Sentry.close(2000).then(() => process.exit(1));
+}
+process.on("uncaughtException", (err) => crashSafely("Uncaught exception", err));
+process.on("unhandledRejection", (reason) => crashSafely("Unhandled promise rejection", reason));
+
 const express = require("express");
 const path = require("path");
 const cors = require("cors");
